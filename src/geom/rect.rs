@@ -84,7 +84,7 @@ impl Hittable for AxisRect
         let v = (b - self.p0[1]) / (self.p1[1] - self.p1[1]);
 
 
-        Some(HitPayload::new(ray, t, ray.at(t), self.normal, self.mat.clone(), glm::vec2(u, v)))
+        Some(HitPayload::new(ray, t, self.normal, self.mat.clone(), glm::vec2(u, v)))
     }
 
     fn bounding_box(&self) -> Option<AABB> {

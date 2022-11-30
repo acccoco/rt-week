@@ -76,7 +76,7 @@ impl Hittable for Sphere
         // 注：使用 (p - self.center) / self.radius 表示法线，可以将球的半径设为负数，对应的法线指向内侧
         let obj_normal = glm::normalize((p - self.center) / self.radius);
 
-        Some(HitPayload::new(&ray, root, p, obj_normal, self.mat.clone(),
+        Some(HitPayload::new(&ray, root, obj_normal, self.mat.clone(),
                              Sphere::get_uv(&obj_normal)))
     }
 

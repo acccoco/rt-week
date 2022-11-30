@@ -15,13 +15,20 @@ pub struct Ray
 
 
 impl Ray {
-    // 通过起点和目标点的方式来创建射线
+    /// 通过起点和目标点的方式来创建射线
     pub fn new(orig: glm::Vec3, target: glm::Vec3) -> Ray
     {
         let dir = glm::normalize(target - orig);
-        if check_or(&dir, f32::is_nan) {
-            panic!("ray dir NaN");
-        }
+        debug_assert!(!check_or(&dir, f32::is_nan), "ray dir NaN");
+
+        Ray { orig, dir }
+    }
+
+    /// dir 是方向，确保是单位向量
+    pub fn new_d(orig: glm::Vec3, dir: glm::Vec3) -> Ray
+    {
+        debug_assert!(glm::is_close_to(&glm::length(dir), &1.0_f32, 0.01_f32));
+
         Ray { orig, dir }
     }
 
@@ -75,11 +82,10 @@ pub struct HitPayload
 impl HitPayload
 {
     /// obj_normal 是物体的实际法线，保证已经正规化
-    pub fn new(ray: &Ray, t: f32, p: glm::Vec3, obj_normal: glm::Vec3, mat: Arc<dyn Material + Send + Sync>, uv: glm::Vec2) -> HitPayload
+    pub fn new(ray: &Ray, t: f32, obj_normal: glm::Vec3, mat: Arc<dyn Material + Send + Sync>, uv: glm::Vec2) -> HitPayload
     {
         debug_assert!(glm::is_close_to(&glm::length(obj_normal), &1.0, 0.01));
-        debug_assert!(t > 0.0);
-        debug_assert!(!check_or(&p, f32::is_nan));
+        debug_assert!(!t.is_nan());
 
         if check_or(&obj_normal, f32::is_nan) {
             panic!("invalida normal");
@@ -89,10 +95,14 @@ impl HitPayload
         let front_face = glm::dot(*ray.dir(), obj_normal) < 0.0;
         let normal = if front_face { obj_normal } else { -obj_normal };
 
-        HitPayload { t, normal, p, front_face, mat, uv }
+        HitPayload { t, normal, p: ray.at(t), front_face, mat, uv }
     }
 
+    /// 和光线相对的法线方向，并不是物体本身的法线方向
     pub fn normal(&self) -> &glm::Vec3 { &self.normal }
+
+    /// 物体本身的法线方向
+    pub fn obj_normal(&self) -> glm::Vec3 { if self.front_face { self.normal } else { -self.normal } }
     pub fn front_face(&self) -> bool { self.front_face }
     pub fn t(&self) -> f32 { self.t }
     pub fn material(&self) -> &Arc<dyn Material + Send + Sync> { &self.mat }

@@ -16,8 +16,8 @@ impl AABB
     pub fn new_default() -> AABB
     {
         AABB {
-            minimum: glm::vec3(f32::MAX, f32::MAX, f32::MAX),
-            maximum: glm::vec3(f32::MIN, f32::MIN, f32::MIN),
+            minimum: glm::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            maximum: glm::vec3(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY),
         }
     }
 
