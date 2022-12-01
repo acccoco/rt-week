@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use crate::geom::aabb::AABB;
 use crate::geom::Axis;
-use crate::ray::{HitPayload, Hittable, HittableList, Ray};
+use crate::geom::hittable_list::HittableList;
+use crate::hit::{HitPayload, Hittable};
+use crate::ray::Ray;
 
 
 pub struct BVHNode
@@ -16,16 +18,18 @@ pub struct BVHNode
 
 impl BVHNode
 {
+    /// 构建 BVH，确保这些 object 都是存在包围盒的
+    /// BVH 的构建策略：
+    /// - 如果只有一个物体，那么将左右子节点都设为这个物体
+    /// - 如果有多个物体，就随机选择一个轴进行排序，再对半分
     pub fn new(objects: &[Arc<dyn Hittable + Send + Sync>]) -> BVHNode
     {
-        // 如果只有一个物体，那么将左右子节点都设为这个物体
-        // 如果有多个物体，就随机选择一个轴进行排序，再对半分
-
         debug_assert!(!objects.is_empty());
 
         let left: Arc<dyn Hittable + Send + Sync>;
         let right: Arc<dyn Hittable + Send + Sync>;
 
+        // 随机选择一个轴，并使用对应的 comparator
         let comparator = match Axis::rand() {
             Axis::X => AABB::compare_x,
             Axis::Y => AABB::compare_y,
@@ -50,9 +54,9 @@ impl BVHNode
                 let mut objects = objects.to_vec();
                 objects.sort_by(|a, b| comparator(a.deref(), b.deref()));
 
-                let mid = objects.len() / 2;
-                left = Arc::new(Self::new(&mut objects[0..mid]));
                 let len = objects.len();
+                let mid = len / 2;
+                left = Arc::new(Self::new(&mut objects[0..mid]));
                 right = Arc::new(Self::new(&mut objects[mid..len]));
             }
         }
@@ -78,6 +82,8 @@ impl BVHNode
 impl Hittable for BVHNode
 {
     fn hit(&self, ray: &Ray, t_range: (f32, f32)) -> Option<HitPayload> {
+        debug_assert!(t_range.0 < t_range.1);
+
         // 首先检查整体的包围盒是否击中，如果击中
         // 再依次判断左子节点和右子节点是否被击中，并选择 t 最小的作为结果
 

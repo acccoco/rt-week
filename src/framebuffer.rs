@@ -1,6 +1,4 @@
 use geefr_ppm::Ppm as PPM;
-
-
 use crate::utility::{gamma_correction};
 
 
@@ -52,12 +50,15 @@ impl FrameBuffer
     }
 
     /// 将颜色写入 ppm 中
-    /// - 颜色是真实的颜色，该函数会进行 Gamma 矫正
+    /// - 颜色是真实的颜色，范围可以超过 1，该函数会进行 Gamma 矫正
     pub fn write_color(&mut self, pos: (u32, u32), color: &glm::Vec3)
     {
-        let to_ppm_color = |c: f32| (c.clamp(0.0, 0.999) * 256.0) as u8;
+        debug_assert!(color.x >= 0.0 && color.y >= 0.0 && color.z >= 0.0);
 
         let color = gamma_correction(*color);
+
+        // 将颜色从浮点数截取到 [0, 1] 范围，并使用 unormal-u8 进行编码
+        let to_ppm_color = |c: f32| (c.clamp(0.0, 0.999) * 256.0) as u8;
 
         self.ppm.set_pixel(pos.0 as usize, pos.1 as usize,
                            to_ppm_color(color.x),
@@ -81,7 +82,7 @@ impl FrameBuffer
     /// 为某个像素生成多个 sample，并计算每个 sample 的 uv
     pub fn multi_sample(framebuffer_size: (u32, u32), pos: (u32, u32), samples: u32) -> Vec<(f32, f32)>
     {
-        debug_assert!(pos.0 <= framebuffer_size.0 && pos.1 <= framebuffer_size.1);
+        debug_assert!(pos.0 < framebuffer_size.0 && pos.1 < framebuffer_size.1);
         debug_assert!(samples > 0);
 
         let width_inv = 1.0 / framebuffer_size.0 as f32;

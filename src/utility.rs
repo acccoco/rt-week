@@ -75,6 +75,13 @@ pub fn check_or<F: Fn(f32) -> bool>(vec: &glm::Vec3, check: F) -> bool
 }
 
 
+/// 向量是否已经正规化
+pub fn is_normalized(vec: &glm::Vec3) -> bool
+{
+    (glm::length(*vec) - 1.0).abs() < 0.001
+}
+
+
 #[cfg(test)]
 mod test
 {
@@ -97,6 +104,7 @@ mod test
 }
 
 
+/// 对于生产消费模式 channel 中的 sender，只做多份拷贝
 pub fn clone_sender<T>(sender: Sender<T>, num: usize) -> Vec<Sender<T>>
 {
     debug_assert!(num > 0);

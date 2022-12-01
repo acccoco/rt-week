@@ -1,6 +1,7 @@
-use crate::material::Material;
-use crate::ray::{Ray, HitPayload};
-use crate::utility::{rand_in_unit_sphere};
+use crate::hit::HitPayload;
+use crate::material::{Material, Scatter};
+use crate::ray::Ray;
+use crate::utility::rand_in_unit_sphere;
 
 
 /// 金属材质，并不是基于物理的
@@ -22,7 +23,7 @@ impl Metal
 
 impl Material for Metal
 {
-    fn scatter(&self, ray_in: &Ray, hit_payload: &HitPayload) -> Option<(Ray, glm::Vec3)>
+    fn scatter(&self, ray_in: &Ray, hit_payload: &HitPayload) -> Option<Scatter>
     {
         let reflect_dir = glm::reflect(*ray_in.dir(), *hit_payload.normal());
 
@@ -32,8 +33,16 @@ impl Material for Metal
         if glm::dot(scattered_dir, *hit_payload.normal()) <= 0.0 {
             None
         } else {
-            let ray_out = Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scattered_dir);
-            Some((ray_out, self.albedo))
+            Some(Scatter {
+                monte_pdf: 1.0,     // TODO
+                scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scattered_dir),
+                albedo: self.albedo,
+            })
         }
+    }
+
+
+    fn scatter_pdf(&self, _ray_in: &Ray, _hit_payload: &HitPayload, _ray_out: &Ray) -> f32 {
+        todo!()
     }
 }

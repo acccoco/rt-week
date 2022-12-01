@@ -1,7 +1,9 @@
 use std::sync::Arc;
+use num::traits::FloatConst;
+use crate::hit::HitPayload;
 
-use crate::material::{Material};
-use crate::ray::{Ray, HitPayload};
+use crate::material::{Material, Scatter};
+use crate::ray::Ray;
 use crate::utility::{near_zero, rand_unit_vec};
 use crate::texture::{SolidColor, Texture};
 
@@ -16,6 +18,8 @@ impl Lambertian
 {
     pub fn new(albedo: glm::Vec3) -> Lambertian
     {
+        debug_assert!(albedo.x >= 0.0 && albedo.y >= 0.0 && albedo.z >= 0.0);
+
         Lambertian { albedo: Arc::new(SolidColor::new(albedo)) }
     }
 
@@ -29,10 +33,9 @@ impl Lambertian
 
 impl Material for Lambertian
 {
-    /// 对于 Lambert 材质，选择的概率密度函数是 fW = cos\theta / pi
-    /// 可以得到 attenuation = albedo
-    fn scatter(&self, _: &Ray, hit_payload: &HitPayload) -> Option<(Ray, glm::Vec3)>
+    fn scatter(&self, _: &Ray, hit_payload: &HitPayload) -> Option<Scatter>
     {
+        // 用于 Monte Carlo 积分的 pdf = cos(theta) / pi，随意选择的
         let mut scatter_dir = *hit_payload.normal() + rand_unit_vec();
 
         // 如果随机生成的 target 距离 hit point 非常近，可能会导致除 0 错误
@@ -41,6 +44,18 @@ impl Material for Lambertian
         }
 
         let ray_out = Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir);
-        Some((ray_out, self.albedo.sample(hit_payload.uv(), hit_payload.hit_point())))
+
+        Some(Scatter {
+            monte_pdf: f32::max(f32::MIN_POSITIVE, glm::dot(*hit_payload.normal(), *ray_out.dir()) / f32::PI()),
+            scatter_ray: ray_out,
+            albedo: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
+        })
+    }
+
+
+    /// 根据另一种形式的反射方程，朝某个方向散射的 pdf = cos(theta) / pi
+    fn scatter_pdf(&self, _ray_in: &Ray, _hit_payload: &HitPayload, _ray_out: &Ray) -> f32 {
+        f32::max(0.0,
+                 glm::dot(*_hit_payload.normal(), *_ray_out.dir()) / f32::PI())
     }
 }

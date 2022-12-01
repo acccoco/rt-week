@@ -1,6 +1,7 @@
 use std::sync::Arc;
-use crate::material::Material;
-use crate::ray::{HitPayload, Ray};
+use crate::hit::HitPayload;
+use crate::material::{Material, Scatter};
+use crate::ray::Ray;
 use crate::texture::{SolidColor, Texture};
 
 
@@ -28,7 +29,7 @@ impl DiffuseEmit
 
 impl Material for DiffuseEmit {
     /// 发光材料，因此不反射或者折射光线
-    fn scatter(&self, _ray_in: &Ray, _hit_payload: &HitPayload) -> Option<(Ray, glm::Vec3)> {
+    fn scatter(&self, _ray_in: &Ray, _hit_payload: &HitPayload) -> Option<Scatter> {
         None
     }
 

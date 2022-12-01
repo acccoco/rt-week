@@ -1,33 +1,32 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 
 use rand::{Rand, Rng};
 use num::Zero;
 
 use rt_week::{camera::Camera,
               framebuffer::FrameBuffer,
-              render::Renderer,
-              ray::{HittableList},
-              geom::{Sphere},
-              material::{Lambertian, Metal, Dielecric, Material}};
-use rt_week::geom::{Axis, RotateY, Translate};
+              geom::Sphere,
+              material::{Dielecric, Lambertian, Material, Metal},
+              render::Renderer};
+use rt_week::geom::Axis;
 use rt_week::geom::bvh::BVHNode;
 use rt_week::geom::cube::Cube;
-use rt_week::geom::rect::{AxisRect};
+use rt_week::geom::hittable_list::HittableList;
+use rt_week::geom::rect::AxisRect;
+use rt_week::geom::transform::{RotateY, Translate};
 use rt_week::geom::volumn::ConstantMedium;
 use rt_week::material::DiffuseEmit;
-use rt_week::noise::{NoiseTexture};
-use rt_week::ray::Hittable;
+use rt_week::noise::NoiseTexture;
+use rt_week::hit::Hittable;
 use rt_week::render::Background;
 use rt_week::texture::{CheckerTexture, ImageTexture};
 
 
 fn main() {
     let mut renderer = Renderer::new();
-    renderer.set_quality(32, 32);
-    renderer.set_performance(7, 64);
 
 
-    let (scene, camera) = match 7 {
+    let (scene, camera) = match 5 {
         0 => random_scene(),
         1 => two_sphere(),
         2 => two_perlin_sphere(),
@@ -39,7 +38,7 @@ fn main() {
         }
         5 => {
             renderer.set_backround(Background::Color(glm::Vec3::zero()));
-            renderer.set_quality(64, 32);
+            renderer.set_quality(200, 50);
             cornel_box()
         }
         6 => {
@@ -55,7 +54,7 @@ fn main() {
         _ => panic!(""),
     };
 
-    let mut framebuffer = FrameBuffer::new(480, camera.aspect());
+    let mut framebuffer = FrameBuffer::new(600, camera.aspect());
 
 
     // 开始渲染

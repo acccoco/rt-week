@@ -14,4 +14,5 @@ pub mod render;
 pub mod material;
 pub mod texture;
 pub mod noise;
+pub mod hit;
 

@@ -1,10 +1,15 @@
 use std::sync::Arc;
 use crate::geom::aabb::AABB;
 use crate::geom::Axis;
+use crate::geom::hittable_list::HittableList;
 use crate::geom::rect::AxisRect;
+use crate::hit::{HitPayload, Hittable};
 use crate::material::Material;
-use crate::ray::{HitPayload, Hittable, HittableList, Ray};
+use crate::ray::Ray;
+use crate::utility::check_and;
 
+
+/// 轴对齐的长方体
 pub struct Cube
 {
     box_min: glm::Vec3,
@@ -17,6 +22,8 @@ impl Cube
 {
     pub fn new(p0: glm::Vec3, p1: glm::Vec3, mat: Arc<dyn Material + Sync + Send>) -> Cube
     {
+        debug_assert!(check_and(&p0, f32::is_finite));
+        debug_assert!(check_and(&p1, f32::is_finite));
         debug_assert!(p0.x < p1.x && p0.y < p1.y && p0.z < p1.z);
 
         let front = AxisRect::new(glm::vec2(p0.x, p0.y), glm::vec2(p1.x, p1.y), p1.z, mat.clone(), Axis::Z);

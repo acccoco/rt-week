@@ -1,8 +1,8 @@
-
-use crate::material::{Material};
-use crate::ray::{Ray, HitPayload};
+use crate::material::{Material, Scatter};
+use crate::ray::Ray;
 use num::One;
 use num::pow::Pow;
+use crate::hit::HitPayload;
 
 
 pub struct Dielecric
@@ -45,8 +45,7 @@ fn reflectance(cos_theta: f32, ref_idx: f32) -> f32
 
 impl Material for Dielecric
 {
-    fn scatter(&self, ray_in: &Ray, hit_payload: &HitPayload) -> Option<(Ray, glm::Vec3)> {
-        let attenuation = glm::Vec3::one();
+    fn scatter(&self, ray_in: &Ray, hit_payload: &HitPayload) -> Option<Scatter> {
         let refraction_ratio = if hit_payload.front_face() { 1.0 / self.ir } else { self.ir };
 
         let cos_theta = f32::min(glm::dot(-*ray_in.dir(), *hit_payload.normal()), 1.0);
@@ -63,7 +62,15 @@ impl Material for Dielecric
             };
 
 
-        Some((Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir),
-              attenuation))
+        Some(Scatter {
+            monte_pdf: 1.0,         // FIXME
+            albedo: glm::Vec3::one(),
+            scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir),
+        })
+    }
+
+
+    fn scatter_pdf(&self, _ray_in: &Ray, _hit_payload: &HitPayload, _ray_out: &Ray) -> f32 {
+        todo!()
     }
 }

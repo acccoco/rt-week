@@ -1,13 +1,15 @@
 use std::ops::Deref;
 use num::{One, Zero};
 
-use crate::utility::{clone_sender};
-use crate::ray::{Ray, Hittable};
-use crate::camera::{Camera};
+use crate::utility::clone_sender;
+use crate::ray::Ray;
+use crate::camera::Camera;
 use crate::framebuffer::{FrameBuffer, Grid};
 use std::sync::{Arc, mpsc};
 use std::thread;
+use crate::hit::Hittable;
 use crate::render::Background::Sky;
+use crate::material::Scatter;
 
 
 pub enum Background
@@ -52,7 +54,7 @@ impl Renderer
     pub fn new() -> Renderer
     {
         Renderer {
-            samples: 8,
+            samples: 32,
             max_depth: 32,
             thread_num: 8,
             tile_size: 32,
@@ -83,14 +85,14 @@ impl Renderer
     /// - 命中：采集发光颜色，并进行下一步的光线投射
     ///      - 光线没有后续：直接返回发光色
     ///      - 递归，返回发光色 + 递归的结果
-    fn cast_ray(&self, scene: &dyn Hittable, ray: &Ray, iter_depth: i32) -> glm::Vec3
+    fn cast_ray(&self, scene: &dyn Hittable, ray_in: &Ray, iter_depth: i32) -> glm::Vec3
     {
         if iter_depth <= 0 { return glm::Vec3::zero(); }
 
         // 注：使用 near=0.001 可以避免自身反射
-        match scene.hit(ray, (0.001, f32::INFINITY)) {
+        match scene.hit(ray_in, (0.001, f32::INFINITY)) {
             // 光线什么都没有击中，返回背景色
-            None => self.background.color(ray),
+            None => self.background.color(ray_in),
 
 
             // 根据表面材质得到后续光线
@@ -99,14 +101,29 @@ impl Renderer
                 // 采集发光颜色
                 let emit_color = payload.material().emit(payload.uv(), payload.hit_point());
 
-                match payload.material().scatter(ray, &payload) {
+                match payload.material().scatter(ray_in, &payload) {
 
                     // 光线击中了物体，但是不再有后续的散射，直接返回物体的发光色
                     None => emit_color,
 
                     // 还有后续的散射
-                    Some((ray_out, attenuation)) => {
-                        emit_color + self.cast_ray(scene, &ray_out, iter_depth - 1) * attenuation
+                    Some(Scatter { monte_pdf, scatter_ray, albedo }) => {
+                        debug_assert!(monte_pdf > 0.0);
+
+                        // 朝某个方向散射的 pdf，是 BRDF 的一部分
+                        let scatter_pdf = payload.material().scatter_pdf(ray_in, &payload, &scatter_ray);
+
+                        // 这里的反射方程是另一种形式的，带有 scatter pdf 项的
+                        // 使用 Monte Carlo 积分计算来自散射的光照，其 pdf 可以任意选择
+                        let scatter_color = self.cast_ray(scene, &scatter_ray, iter_depth - 1);
+
+
+                        let res = emit_color +
+                            scatter_color * albedo * scatter_pdf / monte_pdf;
+                       
+                        debug_assert!(res.x >= 0.0 && res.y >= 0.0 && res.z >= 0.0);
+
+                        res
                     }
                 }
             }
@@ -190,12 +207,20 @@ impl Renderer
         debug_assert!(senders.is_empty());
         debug_assert!(tasks.is_empty());
 
+        // 进度条
+        let pb = indicatif::ProgressBar::new(
+            ((framebuffer.width() + renderer.tile_size - 1) / renderer.tile_size) as u64
+                * ((framebuffer.height() + renderer.tile_size - 1) / renderer.tile_size) as u64);
+
         for tile_res in receiver {
             for (pos, color) in tile_res
             {
                 framebuffer.write_color(pos, &color);
             }
+            pb.inc(1);
         }
+
+        pb.finish_with_message("done");
 
         for thread in threads {
             thread.join().unwrap();

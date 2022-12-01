@@ -1,9 +1,10 @@
 use std::sync::Arc;
 use glm::ext::Consts;
 use crate::geom::aabb::AABB;
-use crate::ray::HitPayload;
-use crate::ray::{Ray, Hittable};
-use crate::material::{Material};
+use crate::hit::{HitPayload, Hittable};
+use crate::ray::Ray;
+use crate::material::Material;
+use crate::utility::{check_and, is_normalized};
 
 
 pub struct Sphere
@@ -16,8 +17,12 @@ pub struct Sphere
 
 impl Sphere
 {
+    /// 创建球体，允许负数半径
     pub fn new(center: glm::Vec3, radius: f32, mat: Arc<dyn Material + Send + Sync>) -> Sphere
     {
+        debug_assert!(check_and(&center, f32::is_finite));
+        debug_assert!(radius.is_finite() && radius != 0.0);
+
         Sphere { center, radius, mat }
     }
 
@@ -26,7 +31,8 @@ impl Sphere
     /// p 是单位球上的一个点，确保到原点的距离为 1
     pub fn get_uv(p: &glm::Vec3) -> glm::Vec2
     {
-        debug_assert!(glm::is_close_to(&glm::length(*p), &1.0, 0.01));
+        // 确保 p 位于单位球上
+        debug_assert!(is_normalized(p));
 
         let theta = f32::acos(-p.y);
         let phi = f32::atan2(-p.z, p.x) + f32::pi();
@@ -62,9 +68,9 @@ impl Hittable for Sphere
         loop {
             // 优先选择 t 更小的那一个交点
             root = (-half_b - sqrtd) / a;
-            if root >= t_range.0 && root < t_range.1 { break; }
+            if root > t_range.0 && root < t_range.1 { break; }
             root = (-half_b + sqrtd) / a;
-            if root >= t_range.0 && root < t_range.1 { break; }
+            if root > t_range.0 && root < t_range.1 { break; }
 
             // 两个根都不在合适的范围内
             return None;
@@ -82,10 +88,9 @@ impl Hittable for Sphere
 
 
     fn bounding_box(&self) -> Option<AABB> {
-        let aabb = AABB::new(
-            self.center - glm::vec3(self.radius, self.radius, self.radius),
-            self.center + glm::vec3(self.radius, self.radius, self.radius),
-        );
-        Some(aabb)
+        Some(AABB::new(
+            self.center - self.radius,
+            self.center + self.radius,
+        ))
     }
 }
