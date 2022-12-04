@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use num::Zero;
+use rand::Rng;
 use crate::geom::aabb::AABB;
 use crate::geom::Axis;
 use crate::hit::{HitPayload, Hittable};
@@ -27,6 +28,9 @@ pub struct AxisRect
 
     /// 矩形的垂直方向
     idx_axis: usize,
+
+    /// 矩形的面积
+    area: f32,
 }
 
 
@@ -65,6 +69,9 @@ impl AxisRect
             }
         }
 
+        let area = (p1[0] - p0[0]) * (p1[1] - p0[1]);
+        debug_assert!(area > 0.0);
+
         AxisRect {
             mat,
             p0,
@@ -74,6 +81,7 @@ impl AxisRect
             idx0,
             idx1,
             idx_axis,
+            area,
         }
     }
 }
@@ -115,5 +123,44 @@ impl Hittable for AxisRect
         max[self.idx1] = self.p1[1];
 
         Some(AABB::new(min, max))
+    }
+
+
+    fn pdf(&self, _ray: &Ray) -> f32 {
+        match self.hit(_ray, (0.001, f32::INFINITY)) {
+            None => 0.0,
+
+            // 在矩形中均匀选择一个点，该点和光线原点的组成的方向作为随机变量，
+            // 该随机变量的 pdf 通过如下方法计算出
+            Some(hit_payload) => {
+                let distance_squared = hit_payload.t() * hit_payload.t();
+                // 此处的角度是光线和矩形平面的法线之间的夹角
+                let cosine = glm::dot(*_ray.dir(), *hit_payload.normal()).abs();
+
+                // 根据轴对齐矩形的 hit 方法，可以确定 cosine 一定不会是 0.0
+                debug_assert!(cosine > 0.0);
+
+                distance_squared / (cosine * self.area)
+            }
+        }
+    }
+
+
+    fn rand_dir(&self, origin: &glm::Vec3) -> Option<(glm::Vec3, f32)> {
+        let mut rng = rand::thread_rng();
+        let mut rand_point = glm::vec3(self.k, self.k, self.k);
+
+        for _ in 0..5 {
+            rand_point[self.idx0] = rng.gen_range(self.p0[0], self.p1[0]);
+            rand_point[self.idx1] = rng.gen_range(self.p0[1], self.p1[1]);
+
+            let ray = Ray::new(*origin, rand_point);
+            let pdf = self.pdf(&ray);
+
+            if pdf > 0.0 {
+                return Some((*ray.dir(), pdf));
+            }
+        }
+        None
     }
 }

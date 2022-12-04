@@ -1,5 +1,6 @@
 use rand::{Rand, Rng};
 use std::sync::mpsc::Sender;
+use num::traits::FloatConst;
 
 
 /// 在单位球内随机取一点
@@ -39,6 +40,23 @@ pub fn rand_in_unit_disk() -> glm::Vec2
 pub fn rand_unit_vec() -> glm::Vec3
 {
     glm::normalize(rand_in_unit_sphere())
+}
+
+
+/// 在半球表面随机取一点，使得立体角的概率密度为 cos(theta)/pi
+pub fn rand_cos_dir() -> glm::Vec3
+{
+    let mut rng = rand::thread_rng();
+    let r1 = rng.gen::<f32>();
+    let r2 = rng.gen::<f32>();
+
+    let z = f32::sqrt(1.0 - r2);
+    let phi = 2.0 * f32::PI() * r1;
+    let sin_theta = f32::sqrt(r2);
+    let x = f32::cos(phi) * sin_theta;
+    let y = f32::sin(phi) * sin_theta;
+
+    glm::vec3(x, y, z)
 }
 
 

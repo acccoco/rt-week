@@ -37,6 +37,7 @@ pub use sphere::Sphere;
 pub mod cube;
 pub mod transform;
 pub mod hittable_list;
+pub mod onb;
 
 
 #[cfg(test)]

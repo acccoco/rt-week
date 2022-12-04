@@ -10,6 +10,7 @@ use std::thread;
 use crate::hit::Hittable;
 use crate::render::Background::Sky;
 use crate::material::Scatter;
+use crate::pdf::{HittablePDF, MixPDF, PDF};
 
 
 pub enum Background
@@ -85,45 +86,54 @@ impl Renderer
     /// - 命中：采集发光颜色，并进行下一步的光线投射
     ///      - 光线没有后续：直接返回发光色
     ///      - 递归，返回发光色 + 递归的结果
-    fn cast_ray(&self, scene: &dyn Hittable, ray_in: &Ray, iter_depth: i32) -> glm::Vec3
+    fn cast_ray(&self, scene: &dyn Hittable, ray_in: &Ray, iter_depth: i32, lights: &dyn Hittable) -> glm::Vec3
     {
         if iter_depth <= 0 { return glm::Vec3::zero(); }
 
         // 注：使用 near=0.001 可以避免自身反射
         match scene.hit(ray_in, (0.001, f32::INFINITY)) {
-            // 光线什么都没有击中，返回背景色
+
+            // 情形 1：光线什么都没有击中，返回背景色
             None => self.background.color(ray_in),
 
-
-            // 根据表面材质得到后续光线
+            // 情形 2：光线击中了物体
             Some(payload) => {
-
-                // 采集发光颜色
-                let emit_color = payload.material().emit(payload.uv(), payload.hit_point());
+                // 被击中物体的自发光色
+                let emit_color = payload.material().emit(payload.uv(), payload.hit_point(), ray_in, &payload);
 
                 match payload.material().scatter(ray_in, &payload) {
 
-                    // 光线击中了物体，但是不再有后续的散射，直接返回物体的发光色
-                    None => emit_color,
+                    // 情形 2-1 ：光线击中了物体，但是不再有后续的散射，直接返回物体的发光色
+                    None => return emit_color,
 
-                    // 还有后续的散射
-                    Some(Scatter { monte_pdf, scatter_ray, albedo }) => {
+                    // 情形 2-2：击中了物体，且还有后续的散射
+                    Some(Scatter { pdf: mat_pdf, albedo }) => {
+                        // 使用混合的 pdf，由以下部分得到：
+                        // - 通过符合材质的重要性采样的 mat-pdf
+                        // - 以及符合光源几何的 light-pdf
+                        let light_pdf = HittablePDF::new(lights, *payload.hit_point());
+                        let mix_pdf = MixPDF::new(&light_pdf, mat_pdf.deref(), 0.6);
+
+                        let (scatter_dir, monte_pdf) = if let Some(res) = mix_pdf.generate() {
+                            res
+                        } else {
+                            return emit_color;
+                        };
                         debug_assert!(monte_pdf > 0.0);
+
+                        let scatter_ray = Ray::new_d(*payload.hit_point(), scatter_dir);
+
 
                         // 朝某个方向散射的 pdf，是 BRDF 的一部分
                         let scatter_pdf = payload.material().scatter_pdf(ray_in, &payload, &scatter_ray);
 
                         // 这里的反射方程是另一种形式的，带有 scatter pdf 项的
                         // 使用 Monte Carlo 积分计算来自散射的光照，其 pdf 可以任意选择
-                        let scatter_color = self.cast_ray(scene, &scatter_ray, iter_depth - 1);
+                        let scatter_color = self.cast_ray(scene, &scatter_ray, iter_depth - 1, lights);
+                        debug_assert!(scatter_color.x >= 0.0 && scatter_color.y >= 0.0 && scatter_color.z >= 0.0);
 
 
-                        let res = emit_color +
-                            scatter_color * albedo * scatter_pdf / monte_pdf;
-                       
-                        debug_assert!(res.x >= 0.0 && res.y >= 0.0 && res.z >= 0.0);
-
-                        res
+                        emit_color + albedo * scatter_pdf * scatter_color / monte_pdf
                     }
                 }
             }
@@ -131,7 +141,7 @@ impl Renderer
     }
 
 
-    pub fn render_single_thread(&self, framebuffer: &mut FrameBuffer, scene: Arc<dyn Hittable + Sync + Send>, camera: &Camera)
+    pub fn render_single_thread(&self, framebuffer: &mut FrameBuffer, scene: Arc<dyn Hittable + Sync + Send>, camera: &Camera, lights: Arc<dyn Hittable + Sync + Send>)
     {
         let framebuffer_size = (framebuffer.width(), framebuffer.height());
         for pos in framebuffer.pixel_iter()
@@ -143,7 +153,7 @@ impl Renderer
             {
                 let ray = camera.ray_from_uv(uv);
 
-                pixel_color = pixel_color + self.cast_ray(scene.deref(), &ray, self.max_depth);
+                pixel_color = pixel_color + self.cast_ray(scene.deref(), &ray, self.max_depth, lights.deref());
             }
 
             pixel_color = pixel_color / self.samples as f32;
@@ -165,7 +175,7 @@ impl Renderer
     }
 
 
-    pub fn render_multi_thread(renderer: Arc<Renderer>, framebuffer: &mut FrameBuffer, scene: Arc<dyn Hittable + Sync + Send>, camera: &Camera)
+    pub fn render_multi_thread(renderer: Arc<Renderer>, framebuffer: &mut FrameBuffer, scene: Arc<dyn Hittable + Sync + Send>, camera: &Camera, lights: Arc<dyn Hittable + Sync + Send>)
     {
         let framebuffer_size = (framebuffer.width(), framebuffer.height());
         let mut tasks = Renderer::generate_tasks(framebuffer, renderer.thread_num, renderer.tile_size);
@@ -181,6 +191,7 @@ impl Renderer
             let sender = senders.pop().unwrap();
             let task = tasks.pop().unwrap();
             let scene = scene.clone();
+            let lights = lights.clone();
             let camera = camera.clone();
 
             threads.push(thread::spawn(move || {
@@ -191,7 +202,7 @@ impl Renderer
                         let mut color = glm::Vec3::zero();
                         for uv in FrameBuffer::multi_sample(framebuffer_size, pos, renderer.samples) {
                             let ray = camera.ray_from_uv(uv);
-                            color = color + renderer.cast_ray(scene.deref(), &ray, renderer.max_depth);
+                            color = color + renderer.cast_ray(scene.deref(), &ray, renderer.max_depth, lights.deref());
                         }
                         color = color / renderer.samples as f32;
 

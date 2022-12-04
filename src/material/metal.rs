@@ -33,11 +33,12 @@ impl Material for Metal
         if glm::dot(scattered_dir, *hit_payload.normal()) <= 0.0 {
             None
         } else {
-            Some(Scatter {
-                monte_pdf: 1.0,     // TODO
-                scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scattered_dir),
-                albedo: self.albedo,
-            })
+            todo!()
+            // Some(Scatter {
+            //     monte_pdf: 1.0,     // TODO
+            //     scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scattered_dir),
+            //     albedo: self.albedo,
+            // })
         }
     }
 

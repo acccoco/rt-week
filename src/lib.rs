@@ -15,4 +15,5 @@ pub mod material;
 pub mod texture;
 pub mod noise;
 pub mod hit;
+pub mod pdf;
 

@@ -4,11 +4,10 @@ use crate::ray::Ray;
 
 /// 散射结果的各种信息
 pub struct Scatter {
-    pub scatter_ray: Ray,
     pub albedo: glm::Vec3,
 
     /// 该 pdf 是随机选择的，根据该 pdf 确定散射方向，是 Monte Carlo 积分方法中的一部分
-    pub monte_pdf: f32,
+    pub pdf: Box<dyn PDF>,
 }
 
 
@@ -29,7 +28,7 @@ pub trait Material
 
 
     /// 返回发光颜色
-    fn emit(&self, _uv: &glm::Vec2, _p: &glm::Vec3) -> glm::Vec3
+    fn emit(&self, _uv: &glm::Vec2, _p: &glm::Vec3, _ray_in: &Ray, _payload: &HitPayload) -> glm::Vec3
     {
         glm::Vec3::zero()
     }
@@ -47,5 +46,6 @@ pub use metal::Metal;
 pub use dielecric::Dielecric;
 pub use emit::DiffuseEmit;
 use crate::hit::HitPayload;
+use crate::pdf::PDF;
 
 

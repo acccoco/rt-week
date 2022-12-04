@@ -52,6 +52,15 @@ impl HitPayload
     pub fn material(&self) -> &Arc<dyn Material + Send + Sync> { &self.mat }
     pub fn hit_point(&self) -> &glm::Vec3 { &self.p }
     pub fn uv(&self) -> &glm::Vec2 { &self.uv }
+
+    /// 重新设置交点的法线，确保法线是正规化的，且方向是和光线方向相对的
+    pub fn set_normal(&mut self, normal: glm::Vec3, front_face: bool)
+    {
+        debug_assert!((glm::length(normal) - 1.0).abs() < 0.0001);
+
+        self.front_face = front_face;
+        self.normal = normal;
+    }
 }
 
 
@@ -65,4 +74,20 @@ pub trait Hittable
 
     /// 获取物体的 AABB
     fn bounding_box(&self) -> Option<AABB>;
+
+
+    /// 已知光线的起点，按照某种方法选择一个方向，让光线可以击中物体
+    ///
+    /// 某个方向对应的 pdf 为多少
+    fn pdf(&self, _ray: &Ray) -> f32
+    {
+        0.0
+    }
+
+
+    /// 已知光线的起点，按照某种方法选择一个方向，让光线可以击中物体
+    fn rand_dir(&self, _origin: &glm::Vec3) -> Option<(glm::Vec3, f32)>
+    {
+        None
+    }
 }

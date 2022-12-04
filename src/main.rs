@@ -13,7 +13,7 @@ use rt_week::geom::bvh::BVHNode;
 use rt_week::geom::cube::Cube;
 use rt_week::geom::hittable_list::HittableList;
 use rt_week::geom::rect::AxisRect;
-use rt_week::geom::transform::{RotateY, Translate};
+use rt_week::geom::transform::{FlipFace, RotateY, Translate};
 use rt_week::geom::volumn::ConstantMedium;
 use rt_week::material::DiffuseEmit;
 use rt_week::noise::NoiseTexture;
@@ -33,12 +33,12 @@ fn main() {
         3 => scene_earch(),
         4 => {
             renderer.set_backround(Background::Color(glm::Vec3::zero()));
-            renderer.set_quality(400, 50);
+            renderer.set_quality(64, 50);
             scene_light()
         }
         5 => {
             renderer.set_backround(Background::Color(glm::Vec3::zero()));
-            renderer.set_quality(200, 50);
+            renderer.set_quality(512, 50);
             cornel_box()
         }
         6 => {
@@ -56,13 +56,15 @@ fn main() {
 
     let mut framebuffer = FrameBuffer::new(600, camera.aspect());
 
+    let lights = Arc::new(AxisRect::new(glm::vec2(213.0, 227.0), glm::vec2(343.0, 332.0), 554.0, Arc::new(Lambertian::new(glm::Vec3::zero())), Axis::Y));
+
 
     // 开始渲染
     {
         let now = std::time::SystemTime::now();
         match 0 {
-            0 => { Renderer::render_multi_thread(Arc::new(renderer), &mut framebuffer, scene, &camera); }
-            _ => { renderer.render_single_thread(&mut framebuffer, scene, &camera); }
+            0 => { Renderer::render_multi_thread(Arc::new(renderer), &mut framebuffer, scene, &camera, lights.clone()); }
+            _ => { renderer.render_single_thread(&mut framebuffer, scene, &camera, lights.clone()); }
         }
         println!("{}", now.elapsed().unwrap().as_secs_f32());
     }
@@ -243,7 +245,8 @@ fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera)
     // 左
     scene.add(Arc::new(AxisRect::new(glm::vec2(0.0, 0.0), glm::vec2(555.0, 555.0), 0.0, mat_red.clone(), Axis::X)));
     // 灯
-    scene.add(Arc::new(AxisRect::new(glm::vec2(213.0, 227.0), glm::vec2(343.0, 332.0), 554.0, mat_light.clone(), Axis::Y)));
+    let light = AxisRect::new(glm::vec2(213.0, 227.0), glm::vec2(343.0, 332.0), 554.0, mat_light.clone(), Axis::Y);
+    scene.add(Arc::new(FlipFace::new(Arc::new(light))));
     // 地板
     scene.add(Arc::new(AxisRect::new(glm::vec2(0.0, 0.0), glm::vec2(555.0, 555.0), 0.0, mat_white.clone(), Axis::Y)));
     // 天花板
@@ -256,11 +259,13 @@ fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera)
     let box1 = Cube::new(glm::vec3(0.0, 0.0, 0.0), glm::vec3(165.0, 330.0, 165.0), mat_white.clone());
     let box1 = RotateY::new(Arc::new(box1), 15.0);
     let box1 = Translate::new(Arc::new(box1), glm::vec3(265.0, 0.0, 295.0));
+    // let box1 = Cube::new(glm::vec3(265.0, 0.0, 295.0), glm::vec3(430.0, 330.0, 460.0), mat_white.clone());
     scene.add(Arc::new(box1));
 
     let box2 = Cube::new(glm::vec3(0.0, 0.0, 0.0), glm::vec3(165.0, 165.0, 165.0), mat_white.clone());
     let box2 = RotateY::new(Arc::new(box2), -18.0);
     let box2 = Translate::new(Arc::new(box2), glm::vec3(130.0, 0.0, 65.0));
+    // let box2 = Cube::new(glm::vec3(130.0, 0.0, 65.0), glm::vec3(295.0, 165.0, 230.0), mat_white.clone());
     scene.add(Arc::new(box2));
 
 

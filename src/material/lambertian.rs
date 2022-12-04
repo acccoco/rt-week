@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use num::traits::FloatConst;
+
 use crate::hit::HitPayload;
 
 use crate::material::{Material, Scatter};
+use crate::pdf::CosPDF;
 use crate::ray::Ray;
-use crate::utility::{near_zero, rand_unit_vec};
+
 use crate::texture::{SolidColor, Texture};
 
 /// Lambert 材质，fr = albedo / pi
@@ -35,19 +37,10 @@ impl Material for Lambertian
 {
     fn scatter(&self, _: &Ray, hit_payload: &HitPayload) -> Option<Scatter>
     {
-        // 用于 Monte Carlo 积分的 pdf = cos(theta) / pi，随意选择的
-        let mut scatter_dir = *hit_payload.normal() + rand_unit_vec();
-
-        // 如果随机生成的 target 距离 hit point 非常近，可能会导致除 0 错误
-        if near_zero(&scatter_dir) {
-            scatter_dir = *hit_payload.normal();
-        }
-
-        let ray_out = Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir);
+        let pdf = CosPDF::new(*hit_payload.normal());
 
         Some(Scatter {
-            monte_pdf: f32::max(f32::MIN_POSITIVE, glm::dot(*hit_payload.normal(), *ray_out.dir()) / f32::PI()),
-            scatter_ray: ray_out,
+            pdf: Box::new(pdf),
             albedo: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
         })
     }

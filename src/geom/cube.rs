@@ -2,7 +2,7 @@ use std::sync::Arc;
 use crate::geom::aabb::AABB;
 use crate::geom::Axis;
 use crate::geom::hittable_list::HittableList;
-use crate::geom::rect::AxisRect;
+use crate::geom::rect::{AxisRect};
 use crate::hit::{HitPayload, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
@@ -34,6 +34,7 @@ impl Cube
 
         let right = AxisRect::new(glm::vec2(p0.y, p0.z), glm::vec2(p1.y, p1.z), p1.x, mat.clone(), Axis::X);
         let left = AxisRect::new(glm::vec2(p0.y, p0.z), glm::vec2(p1.y, p1.z), p0.x, mat.clone(), Axis::X);
+
 
         let mut sides = HittableList::default();
         sides.add(Arc::new(front));

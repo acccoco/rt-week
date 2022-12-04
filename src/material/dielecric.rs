@@ -62,11 +62,12 @@ impl Material for Dielecric
             };
 
 
-        Some(Scatter {
-            monte_pdf: 1.0,         // FIXME
-            albedo: glm::Vec3::one(),
-            scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir),
-        })
+        todo!()
+        // Some(Scatter {
+        //     monte_pdf: 1.0,         // FIXME
+        //     albedo: glm::Vec3::one(),
+        //     scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir),
+        // })
     }
 
 

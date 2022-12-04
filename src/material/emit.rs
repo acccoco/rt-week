@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use num::Zero;
 use crate::hit::HitPayload;
 use crate::material::{Material, Scatter};
 use crate::ray::Ray;
@@ -34,7 +35,7 @@ impl Material for DiffuseEmit {
     }
 
 
-    fn emit(&self, uv: &glm::Vec2, p: &glm::Vec3) -> glm::Vec3 {
-        self.emit.sample(uv, p)
+    fn emit(&self, _uv: &glm::Vec2, _p: &glm::Vec3, _ray_in: &Ray, _payload: &HitPayload) -> glm::Vec3 {
+        if _payload.front_face() { self.emit.sample(_uv, _p) } else { glm::Vec3::zero() }
     }
 }

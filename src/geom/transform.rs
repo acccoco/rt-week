@@ -15,6 +15,9 @@ pub struct RotateY
 }
 
 
+/// FIXME 这个类不知道出了什么问题，增加这个修改器后，颜色变暗了。
+///
+/// https://raytracing.github.io/books/RayTracingTheNextWeek.html#instances/instancerotation
 impl RotateY
 {
     pub fn new(obj: Arc<dyn Hittable + Sync + Send>, rotate_degree: f32) -> RotateY
@@ -32,6 +35,7 @@ impl RotateY
             let mut min = glm::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY);
             let mut max = glm::vec3(f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY);
 
+            // 通过三重循环变量 AABB 的 8 个顶点，并分别对每个顶点进行选择变换
             for i in 0..2 {
                 for j in 0..2 {
                     for k in 0..2 {
@@ -79,7 +83,7 @@ impl Hittable for RotateY
         direction[0] = self.cos_theta * ray.dir()[0] - self.sin_theta * ray.dir()[2];
         direction[2] = self.sin_theta * ray.dir()[0] + self.cos_theta * ray.dir()[2];
 
-        let rotated_ray = Ray::new(origin, origin + direction);
+        let rotated_ray = Ray::new_d(origin, direction);
 
         self.obj.hit(&rotated_ray, t_range).and_then(|payload| {
             let mut normal = *payload.normal();
@@ -90,8 +94,6 @@ impl Hittable for RotateY
                 normal = -normal;
             }
 
-            // NOTE 教程上面使用的是 rotate-ray，可能会出问题
-            // https://raytracing.github.io/books/RayTracingTheNextWeek.html#instances/instancerotation
             Some(HitPayload::new(&ray, payload.t(), normal, payload.material().clone(), *payload.uv()))
         })
     }
@@ -137,5 +139,34 @@ impl Hittable for Translate
             Some(AABB::new(*aabb.min() + self.offset,
                            *aabb.max() + self.offset))
         })
+    }
+}
+
+
+/// 翻转面法线
+pub struct FlipFace
+{
+    obj: Arc<dyn Hittable + Sync + Send>,
+}
+
+impl FlipFace
+{
+    pub fn new(obj: Arc<dyn Hittable + Sync + Send>) -> FlipFace
+    {
+        FlipFace { obj }
+    }
+}
+
+impl Hittable for FlipFace
+{
+    fn hit(&self, ray: &Ray, t_range: (f32, f32)) -> Option<HitPayload> {
+        self.obj.hit(ray, t_range).and_then(|mut payload| {
+            payload.set_normal(*payload.normal(), !payload.front_face());
+            Some(payload)
+        })
+    }
+
+    fn bounding_box(&self) -> Option<AABB> {
+        self.obj.bounding_box()
     }
 }

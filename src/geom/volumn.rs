@@ -111,11 +111,12 @@ impl Material for Isotropic
 {
     /// ios 介质会让散射方向随机
     fn scatter(&self, _ray_in: &Ray, hit_payload: &HitPayload) -> Option<Scatter> {
-        Some(Scatter{
-            monte_pdf: 1.0,     // FIXME
-            scatter_ray: Ray::new_d(*hit_payload.hit_point(), rand_unit_vec()),
-            albedo: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
-        })
+        // Some(Scatter{
+        //
+        //     // scatter_ray: Ray::new_d(*hit_payload.hit_point(), rand_unit_vec()),
+        //     albedo: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
+        // })
+        todo!()
     }
 
 
