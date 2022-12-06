@@ -60,18 +60,11 @@ impl Material for Dielecric
                 // 既有折射，又有反射
                 refract(*ray_in.dir(), *hit_payload.normal(), refraction_ratio)
             };
-
-
-        todo!()
-        // Some(Scatter {
-        //     monte_pdf: 1.0,         // FIXME
-        //     albedo: glm::Vec3::one(),
-        //     scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scatter_dir),
-        // })
-    }
-
-
-    fn scatter_pdf(&self, _ray_in: &Ray, _hit_payload: &HitPayload, _ray_out: &Ray) -> f32 {
-        todo!()
+            
+        Some(Scatter{
+            diffuse_pdf: None,
+            specular_ray: Some(Ray::new_d(*hit_payload.hit_point(), scatter_dir)),
+            attenuation: glm::Vec3::one(),
+        })
     }
 }

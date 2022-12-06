@@ -35,7 +35,11 @@ impl Material for DiffuseEmit {
     }
 
 
-    fn emit(&self, _uv: &glm::Vec2, _p: &glm::Vec3, _ray_in: &Ray, _payload: &HitPayload) -> glm::Vec3 {
-        if _payload.front_face() { self.emit.sample(_uv, _p) } else { glm::Vec3::zero() }
+    fn emit(&self, _ray_in: &Ray, _payload: &HitPayload) -> glm::Vec3 {
+        if _payload.front_face() {
+            self.emit.sample(_payload.uv(), _payload.hit_point())
+        } else {
+            glm::Vec3::zero()
+        }
     }
 }

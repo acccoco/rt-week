@@ -16,7 +16,10 @@ impl Metal
 {
     pub fn new(albedo: glm::Vec3, fuzz: f32) -> Metal
     {
-        Metal { albedo, fuzz }
+        Metal {
+            albedo,
+            fuzz: if fuzz < 1.0 { fuzz } else { 1.0 },
+        }
     }
 }
 
@@ -27,23 +30,17 @@ impl Material for Metal
     {
         let reflect_dir = glm::reflect(*ray_in.dir(), *hit_payload.normal());
 
-        // 这样就不是镜面反射了，而是特定的反射波瓣
-        let scattered_dir = reflect_dir + rand_in_unit_sphere() * self.fuzz;
+        let specular_ray = Ray::new_d(*hit_payload.hit_point(),
+                                      glm::normalize(reflect_dir + rand_in_unit_sphere() * self.fuzz));
 
-        if glm::dot(scattered_dir, *hit_payload.normal()) <= 0.0 {
-            None
-        } else {
-            todo!()
-            // Some(Scatter {
-            //     monte_pdf: 1.0,     // TODO
-            //     scatter_ray: Ray::new(*hit_payload.hit_point(), *hit_payload.hit_point() + scattered_dir),
-            //     albedo: self.albedo,
-            // })
+        if glm::dot(*specular_ray.dir(), *hit_payload.normal()) <= 0.0 {
+            return None;
         }
-    }
 
-
-    fn scatter_pdf(&self, _ray_in: &Ray, _hit_payload: &HitPayload, _ray_out: &Ray) -> f32 {
-        todo!()
+        Some(Scatter {
+            specular_ray: Some(specular_ray),
+            diffuse_pdf: None,
+            attenuation: self.albedo,
+        })
     }
 }

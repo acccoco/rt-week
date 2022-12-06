@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use glm::ext::Consts;
+use num::traits::FloatConst;
 use crate::geom::aabb::AABB;
+use crate::geom::onb::ONB;
 use crate::hit::{HitPayload, Hittable};
 use crate::ray::Ray;
 use crate::material::Material;
-use crate::utility::{check_and, is_normalized};
+use crate::utility::{check_and, is_normalized, rand_in_cone};
 
 
 pub struct Sphere
@@ -92,5 +94,76 @@ impl Hittable for Sphere
             self.center - self.radius,
             self.center + self.radius,
         ))
+    }
+
+
+    fn pdf(&self, _ray: &Ray) -> f32 {
+        // 均匀采样，因此 pdf 是常数
+        match self.hit(_ray, (0.001, f32::INFINITY)) {
+            None => 0.0,
+            Some(hit_payload) => {
+                if !hit_payload.front_face() {
+                    return 0.0;
+                }
+                let distance = glm::length(self.center - *_ray.orig());
+                let cos_theta_max = f32::sqrt(1.0 - self.radius * self.radius / (distance * distance));
+                1.0 / (2.0 * f32::PI() * (1.0 - cos_theta_max))
+            }
+        }
+    }
+
+
+    /// 以 origin 为顶点，构成一个与球体相切的圆锥，在圆锥范围内随机采样一个方向
+    fn rand_dir(&self, _origin: &glm::Vec3) -> Option<(glm::Vec3, f32)> {
+        // 圆锥轴线的方向
+        let cone_axis = self.center - *_origin;
+        let distance = glm::length(cone_axis);
+
+        if !distance.is_finite() || distance <= self.radius {
+            // origin 位于球内，无法构成圆锥，无法采样
+            return None;
+        }
+
+        let sin_theta_max = self.radius / distance;
+        let cos_theta_max = f32::sqrt(1.0 - sin_theta_max * sin_theta_max);
+
+        let local_coord = ONB::new(cone_axis);
+        let res_dir = local_coord.local(&rand_in_cone(cos_theta_max));
+
+        // 因为是均匀采样，因此 pdf 是常数，和那片区域的立体角有关
+        let pdf = 1.0 / (2.0 * f32::PI() * (1.0 - cos_theta_max));
+
+        Some((res_dir, pdf))
+    }
+}
+
+
+#[cfg(test)]
+mod test
+{
+    use crate::material::Lambertian;
+    use super::*;
+    use num::Zero;
+
+    #[test]
+    fn test_sphere_rand()
+    {
+        let p = glm::vec3(3.0, 4.0, 5.0);
+        let sphere = Sphere::new(glm::Vec3::zero(), 4.0, Arc::new(Lambertian::new(glm::Vec3::zero())));
+        let distance = glm::length(p - sphere.center);
+        let axis_dir = glm::normalize(sphere.center - p);
+
+        for _ in 0..100 {
+            let (dir, pdf)= sphere.rand_dir(&p).unwrap();
+            let ray = Ray::new_d(p, dir);
+            assert!((pdf - sphere.pdf(&ray)).abs() < 0.001);
+
+            let sin_theta_max = sphere.radius / distance;
+            let cos_theta = glm::dot(axis_dir, dir);
+            let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+            assert!(sin_theta <= sin_theta_max);
+
+            println!("sin: {}, sin max: {}", sin_theta, sin_theta_max);
+        }
     }
 }

@@ -1,10 +1,9 @@
-use std::ops::Deref;
-use std::sync::Arc;
+use glm::ext::Consts;
 use num::traits::FloatConst;
 use crate::geom::onb::ONB;
 use crate::hit::Hittable;
 use crate::ray::Ray;
-use crate::utility::rand_cos_dir;
+use crate::utility::{rand_cos_dir, rand_unit_vec};
 
 
 /// 封装一种随机采样的策略
@@ -128,3 +127,15 @@ impl<'a> PDF for MixPDF<'a>
 }
 
 
+pub struct RandSpherePDF;
+
+impl PDF for RandSpherePDF
+{
+    fn value(&self, _dir: &glm::Vec3) -> f32 {
+        0.25 * f32::one_over_pi()
+    }
+
+    fn generate(&self) -> Option<(glm::Vec3, f32)> {
+        Some((rand_unit_vec(), 0.25 * f32::one_over_pi()))
+    }
+}

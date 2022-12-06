@@ -40,8 +40,9 @@ impl Material for Lambertian
         let pdf = CosPDF::new(*hit_payload.normal());
 
         Some(Scatter {
-            pdf: Box::new(pdf),
-            albedo: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
+            diffuse_pdf: Some(Box::new(pdf)),
+            attenuation: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
+            specular_ray: None,
         })
     }
 

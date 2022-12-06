@@ -15,8 +15,6 @@ pub struct RotateY
 }
 
 
-/// FIXME 这个类不知道出了什么问题，增加这个修改器后，颜色变暗了。
-///
 /// https://raytracing.github.io/books/RayTracingTheNextWeek.html#instances/instancerotation
 impl RotateY
 {

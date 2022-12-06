@@ -100,6 +100,25 @@ pub fn is_normalized(vec: &glm::Vec3) -> bool
 }
 
 
+/// 在单位球的圆锥范围内均匀选择一个方向
+///
+/// 圆锥以 z 轴正方向为中心，圆锥范围由 theta_max 确定
+pub fn rand_in_cone(cos_theta_max: f32) -> glm::Vec3
+{
+    debug_assert!(cos_theta_max >= 0.0 && cos_theta_max <= 1.0);
+
+    let mut rng = rand::thread_rng();
+
+    let z = 1.0 + rng.gen::<f32>() * (cos_theta_max - 1.0);
+    let sin_theta = f32::sqrt(1.0 - z * z);
+    let phi = 2.0 * f32::PI() * rng.gen::<f32>();
+    let x = sin_theta * f32::cos(phi);
+    let y = sin_theta * f32::sin(phi);
+
+    glm::vec3(x, y, z)
+}
+
+
 #[cfg(test)]
 mod test
 {

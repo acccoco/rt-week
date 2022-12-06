@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use glm::{Vec2, Vec3};
 use crate::texture::Texture;
 use crate::texture::solidcolor::SolidColor;
 
@@ -31,7 +30,7 @@ impl CheckerTexture
 
 impl Texture for CheckerTexture
 {
-    fn sample(&self, uv: &Vec2, p: &Vec3) -> Vec3 {
+    fn sample(&self, uv: &glm::Vec2, p: &glm::Vec3) -> glm::Vec3 {
         // 在 xyz 三个方向都会存在纹理交替
         let sines = f32::sin(10.0 * p.x) * f32::sin(10.0 * p.y) * f32::sin(10.0 * p.z);
         if sines < 0.0 {

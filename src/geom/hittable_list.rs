@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use glm::Vec3;
+use rand::Rng;
 use crate::geom::aabb::AABB;
 use crate::hit::{HitPayload, Hittable};
 use crate::ray::Ray;
@@ -63,5 +65,26 @@ impl Hittable for HittableList
             }
         }
         Some(aabb)
+    }
+
+
+    fn pdf(&self, _ray: &Ray) -> f32 {
+        let weight = 1.0 / self.objects.len() as f32;  // 结果是 NaN 也不影响
+        let mut sum = 0.0;
+
+        for obj in &self.objects {
+            sum += obj.pdf(_ray) * weight;
+        }
+
+        sum
+    }
+
+    fn rand_dir(&self, _origin: &Vec3) -> Option<(Vec3, f32)> {
+        if self.objects.is_empty() {
+            return None;
+        }
+
+        let mut rng = rand::thread_rng();
+        self.objects[rng.gen_range(0, self.objects.len()) as usize].rand_dir(_origin)
     }
 }

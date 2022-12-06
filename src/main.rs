@@ -26,7 +26,7 @@ fn main() {
     let mut renderer = Renderer::new();
 
 
-    let (scene, camera) = match 5 {
+    let (scene, camera, lights) = match 7 {
         0 => random_scene(),
         1 => two_sphere(),
         2 => two_perlin_sphere(),
@@ -38,12 +38,12 @@ fn main() {
         }
         5 => {
             renderer.set_backround(Background::Color(glm::Vec3::zero()));
-            renderer.set_quality(512, 50);
+            renderer.set_quality(128, 128);
             cornel_box()
         }
         6 => {
             renderer.set_backround(Background::Color(glm::Vec3::zero()));
-            renderer.set_quality(256, 32);
+            renderer.set_quality(32, 32);
             cornel_smoke()
         }
         7 => {
@@ -56,15 +56,13 @@ fn main() {
 
     let mut framebuffer = FrameBuffer::new(600, camera.aspect());
 
-    let lights = Arc::new(AxisRect::new(glm::vec2(213.0, 227.0), glm::vec2(343.0, 332.0), 554.0, Arc::new(Lambertian::new(glm::Vec3::zero())), Axis::Y));
-
 
     // 开始渲染
     {
         let now = std::time::SystemTime::now();
         match 0 {
-            0 => { Renderer::render_multi_thread(Arc::new(renderer), &mut framebuffer, scene, &camera, lights.clone()); }
-            _ => { renderer.render_single_thread(&mut framebuffer, scene, &camera, lights.clone()); }
+            0 => { Renderer::render_multi_thread(Arc::new(renderer), &mut framebuffer, scene, &camera, lights); }
+            _ => { renderer.render_single_thread(&mut framebuffer, scene, &camera, lights); }
         }
         println!("{}", now.elapsed().unwrap().as_secs_f32());
     }
@@ -74,7 +72,7 @@ fn main() {
 
 
 /// 创建一个随机的场景
-fn random_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn random_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     let mut rng = rand::thread_rng();
 
@@ -134,12 +132,12 @@ fn random_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 20.0, 16.0 / 9.0,
                     0.1, 10.0);
 
-    (Arc::new(BVHNode::new_with_list(&scene)), camera)
+    (Arc::new(BVHNode::new_with_list(&scene)), camera, None)
 }
 
 
 /// 另一个场景
-fn two_sphere() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn two_sphere() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     let mut scene = HittableList::default();
 
@@ -156,12 +154,12 @@ fn two_sphere() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 20.0, 16.0 / 9.0,
                     0.0, 10.0);
 
-    (Arc::new(BVHNode::new_with_list(&scene)), camera)
+    (Arc::new(BVHNode::new_with_list(&scene)), camera, None)
 }
 
 
 /// 有随机噪声纹理的球体
-fn two_perlin_sphere() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn two_perlin_sphere() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     let mut scene = HittableList::default();
 
@@ -178,12 +176,12 @@ fn two_perlin_sphere() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 20.0, 16.0 / 9.0,
                     0.0, 10.0);
 
-    (Arc::new(BVHNode::new_with_list(&scene)), camera)
+    (Arc::new(BVHNode::new_with_list(&scene)), camera, None)
 }
 
 
 /// 地球的场景
-fn scene_earch() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn scene_earch() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     let mut scene = HittableList::default();
 
@@ -198,12 +196,12 @@ fn scene_earch() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 20.0, 16.0 / 9.0,
                     0.0, 10.0);
 
-    (Arc::new(scene), camera)
+    (Arc::new(scene), camera, None)
 }
 
 
 /// 具有灯光的场景
-fn scene_light() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn scene_light() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     // 配置场景
     let mut scene = HittableList::default();
@@ -217,7 +215,8 @@ fn scene_light() -> (Arc<dyn Hittable + Sync + Send>, Camera)
     scene.add(Arc::new(sphere2));
 
     let mat_diffuse_emit = Arc::new(DiffuseEmit::new_c(glm::vec3(4.0, 4.0, 4.0)));
-    scene.add(Arc::new(AxisRect::new(glm::vec2(3.0, 1.0), glm::vec2(5.0, 3.0), -2.0, mat_diffuse_emit, Axis::Z)));
+    let light = Arc::new(AxisRect::new(glm::vec2(3.0, 1.0), glm::vec2(5.0, 3.0), -2.0, mat_diffuse_emit, Axis::Z));
+    scene.add(light.clone());
 
 
     // 摄像机
@@ -226,11 +225,12 @@ fn scene_light() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 20.0, 16.0 / 9.0,
                     0.0, 10.0);
 
-    (Arc::new(scene), camera)
+
+    (Arc::new(scene), camera, Some(light.clone()))
 }
 
 
-fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     // 配置场景
     let mut scene = HittableList::default();
@@ -245,8 +245,8 @@ fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera)
     // 左
     scene.add(Arc::new(AxisRect::new(glm::vec2(0.0, 0.0), glm::vec2(555.0, 555.0), 0.0, mat_red.clone(), Axis::X)));
     // 灯
-    let light = AxisRect::new(glm::vec2(213.0, 227.0), glm::vec2(343.0, 332.0), 554.0, mat_light.clone(), Axis::Y);
-    scene.add(Arc::new(FlipFace::new(Arc::new(light))));
+    let light = Arc::new(AxisRect::new(glm::vec2(213.0, 227.0), glm::vec2(343.0, 332.0), 554.0, mat_light.clone(), Axis::Y));
+    scene.add(Arc::new(FlipFace::new(light.clone())));
     // 地板
     scene.add(Arc::new(AxisRect::new(glm::vec2(0.0, 0.0), glm::vec2(555.0, 555.0), 0.0, mat_white.clone(), Axis::Y)));
     // 天花板
@@ -256,17 +256,21 @@ fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera)
 
 
     // 两个立方体
+    // let mat_metal = Arc::new(Metal::new(glm::vec3(0.8, 0.85, 0.88), 0.0));
     let box1 = Cube::new(glm::vec3(0.0, 0.0, 0.0), glm::vec3(165.0, 330.0, 165.0), mat_white.clone());
     let box1 = RotateY::new(Arc::new(box1), 15.0);
     let box1 = Translate::new(Arc::new(box1), glm::vec3(265.0, 0.0, 295.0));
-    // let box1 = Cube::new(glm::vec3(265.0, 0.0, 295.0), glm::vec3(430.0, 330.0, 460.0), mat_white.clone());
     scene.add(Arc::new(box1));
 
-    let box2 = Cube::new(glm::vec3(0.0, 0.0, 0.0), glm::vec3(165.0, 165.0, 165.0), mat_white.clone());
-    let box2 = RotateY::new(Arc::new(box2), -18.0);
-    let box2 = Translate::new(Arc::new(box2), glm::vec3(130.0, 0.0, 65.0));
-    // let box2 = Cube::new(glm::vec3(130.0, 0.0, 65.0), glm::vec3(295.0, 165.0, 230.0), mat_white.clone());
-    scene.add(Arc::new(box2));
+    // let box2 = Cube::new(glm::vec3(0.0, 0.0, 0.0), glm::vec3(165.0, 165.0, 165.0), mat_white.clone());
+    // let box2 = RotateY::new(Arc::new(box2), -18.0);
+    // let box2 = Translate::new(Arc::new(box2), glm::vec3(130.0, 0.0, 65.0));
+    // scene.add(Arc::new(box2));
+
+
+    let mat_glass = Arc::new(Dielecric::new(1.5));
+    let sphere = Arc::new(Sphere::new(glm::vec3(190.0, 90.0, 190.0), 90.0, mat_glass.clone()));
+    scene.add(sphere.clone());
 
 
     // 摄像机
@@ -275,11 +279,18 @@ fn cornel_box() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 40.0, 1.0,
                     0.0, 10.0);
 
-    (Arc::new(scene), camera)
+
+    // 优先采样的目标
+    let mut lights = HittableList::default();
+    lights.add(light.clone());
+    // lights.add(sphere.clone());      // 没有必要对这个球进行优先采样
+    let lights: Option<Arc<dyn Hittable + Sync + Send>> = Some(Arc::new(lights));
+
+    (Arc::new(scene), camera, lights)
 }
 
 
-fn cornel_smoke() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn cornel_smoke() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     // 配置场景
     let mut scene = HittableList::default();
@@ -294,7 +305,8 @@ fn cornel_smoke() -> (Arc<dyn Hittable + Sync + Send>, Camera)
     // 左
     scene.add(Arc::new(AxisRect::new(glm::vec2(0.0, 0.0), glm::vec2(555.0, 555.0), 0.0, mat_red.clone(), Axis::X)));
     // 灯
-    scene.add(Arc::new(AxisRect::new(glm::vec2(113.0, 127.0), glm::vec2(443.0, 432.0), 554.0, mat_light.clone(), Axis::Y)));
+    let light = Arc::new(AxisRect::new(glm::vec2(113.0, 127.0), glm::vec2(443.0, 432.0), 554.0, mat_light.clone(), Axis::Y));
+    scene.add(Arc::new(FlipFace::new(light.clone())));
     // 地板
     scene.add(Arc::new(AxisRect::new(glm::vec2(0.0, 0.0), glm::vec2(555.0, 555.0), 0.0, mat_white.clone(), Axis::Y)));
     // 天花板
@@ -322,12 +334,12 @@ fn cornel_smoke() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 40.0, 1.0,
                     0.0, 10.0);
 
-    (Arc::new(scene), camera)
+    (Arc::new(scene), camera, Some(light.clone()))
 }
 
 
 /// 融合了各种技术的最终场景
-fn final_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera)
+fn final_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera, Option<Arc<dyn Hittable + Sync + Send>>)
 {
     let mut rng = rand::thread_rng();
     let mut scene = HittableList::default();
@@ -354,7 +366,8 @@ fn final_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera)
 
     // 光源：灯光
     let mat_light = Arc::new(DiffuseEmit::new_c(glm::vec3(7.0, 7.0, 7.0)));
-    scene.add(Arc::new(AxisRect::new(glm::vec2(123.0, 147.0), glm::vec2(423.0, 412.0), 554.0, mat_light.clone(), Axis::Y)));
+    let light =Arc::new(AxisRect::new(glm::vec2(123.0, 147.0), glm::vec2(423.0, 412.0), 554.0, mat_light.clone(), Axis::Y)) ;
+    scene.add(Arc::new(FlipFace::new(light.clone())));
 
 
     // 运动模糊的球体，可惜没有运动
@@ -410,5 +423,5 @@ fn final_scene() -> (Arc<dyn Hittable + Sync + Send>, Camera)
                     glm::vec3(0., 1., 0.), 40.0, 1.0,
                     0.0, 10.0);
 
-    (Arc::new(scene), camera)
+    (Arc::new(scene), camera, Some(light.clone()))
 }

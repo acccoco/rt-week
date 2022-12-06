@@ -4,10 +4,13 @@ use crate::ray::Ray;
 
 /// 散射结果的各种信息
 pub struct Scatter {
-    pub albedo: glm::Vec3,
+    pub attenuation: glm::Vec3,
 
     /// 该 pdf 是随机选择的，根据该 pdf 确定散射方向，是 Monte Carlo 积分方法中的一部分
-    pub pdf: Box<dyn PDF>,
+    pub diffuse_pdf: Option<Box<dyn PDF>>,
+
+    /// 用于 specular 材质的。理想镜面反射时，反射方向是确定的.
+    pub specular_ray:  Option<Ray>,
 }
 
 
@@ -28,7 +31,7 @@ pub trait Material
 
 
     /// 返回发光颜色
-    fn emit(&self, _uv: &glm::Vec2, _p: &glm::Vec3, _ray_in: &Ray, _payload: &HitPayload) -> glm::Vec3
+    fn emit(&self, _ray_in: &Ray, _payload: &HitPayload) -> glm::Vec3
     {
         glm::Vec3::zero()
     }

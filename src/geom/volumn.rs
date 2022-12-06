@@ -1,7 +1,9 @@
 use std::sync::Arc;
+use glm::ext::Consts;
 use crate::geom::aabb::AABB;
 use crate::hit::{HitPayload, Hittable};
 use crate::material::{Material, Scatter};
+use crate::pdf::RandSpherePDF;
 use crate::ray::Ray;
 use crate::texture::{SolidColor, Texture};
 use crate::utility::rand_unit_vec;
@@ -111,16 +113,10 @@ impl Material for Isotropic
 {
     /// ios 介质会让散射方向随机
     fn scatter(&self, _ray_in: &Ray, hit_payload: &HitPayload) -> Option<Scatter> {
-        // Some(Scatter{
-        //
-        //     // scatter_ray: Ray::new_d(*hit_payload.hit_point(), rand_unit_vec()),
-        //     albedo: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
-        // })
-        todo!()
-    }
-
-
-    fn scatter_pdf(&self, _ray_in: &Ray, _hit_payload: &HitPayload, _ray_out: &Ray) -> f32 {
-        todo!()
+        Some(Scatter {
+            attenuation: self.albedo.sample(hit_payload.uv(), hit_payload.hit_point()),
+            diffuse_pdf: None,
+            specular_ray: Some(Ray::new_d(*hit_payload.hit_point(), rand_unit_vec())),
+        })
     }
 }

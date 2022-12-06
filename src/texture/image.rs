@@ -1,4 +1,3 @@
-use glm::{Vec2, Vec3};
 use num::Zero;
 use crate::texture::Texture;
 use stb_image::image as stbi;
@@ -48,7 +47,7 @@ impl ImageTexture
 
 impl Texture for ImageTexture
 {
-    fn sample(&self, uv: &Vec2, _p: &Vec3) -> Vec3 {
+    fn sample(&self, uv: &glm::Vec2, _p: &glm::Vec3) -> glm::Vec3 {
         // 将 uv 的范围限制在 [0, 1]，并翻转 v（这个和 stbi 的读取有关）
         let u = uv.x.clamp(0.0, 1.0);
         let v = 1.0 - uv.y.clamp(0.0, 1.0);
